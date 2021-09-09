@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const auth = require("../../middlewares/auth");
 
 const Memory = require("../../models/Memory");
 
@@ -10,32 +11,34 @@ router.get("/", async (req, res) => {
 		res.status(200).json(memories);
 	} catch (err) {
 		res.status(500).json({
-			message: "An error was happend, cannot get data",
-			code: err.code,
+			msg: "An error was happend, cannot get data",
 		});
 	}
 });
 
 // create new Memorie
-router.post("/", (req, res) => {
+router.post("/", auth, (req, res) => {
 	if (!req.body.title || !req.body.body) {
 		res.status(400).json({
-			message: "title and body are required parameters",
+			msg: "title and body are required parameters",
 		});
 	} else {
-		const memory = new Memory(req.body);
+		const memory = new Memory({
+			title: req.body.title,
+			body: req.body.title,
+			userId: req.user.id,
+		});
 		memory
 			.save()
 			.then(() => {
 				res.status(200).json({
 					memory: memory,
-					message: "Item saved successfully",
+					msg: "Item saved successfully",
 				});
 			})
 			.catch((err) => {
 				res.status(500).json({
-					message: "Cannot save data due to server error",
-					code: err.code,
+					msg: "Cannot save data due to server error",
 				});
 			});
 	}
@@ -49,66 +52,78 @@ router.get("/:id", async (req, res) => {
 			res.status(200).json(found);
 		} else {
 			res.status(400).json({
-				message: "Item not found",
+				msg: "Item not found",
 			});
 		}
 	} catch (err) {
 		res.status(400).json({
-			message: "Id unvalid",
+			msg: "Id unvalid",
 		});
 	}
 });
 
 // update a memory
-router.put("/:id", async (req, res) => {
+router.put("/:id", auth, async (req, res) => {
 	try {
 		const found = await Memory.findById(req.params.id);
 		if (found) {
-			await Memory.updateOne(
-				{
-					_id: found.id,
-				},
-				{
-					$set: {
-						title: req.body.title ? req.body.title : found.title,
-						body: req.body.body ? req.body.body : found.body,
+			if (found.userId === req.user.id) {
+				const updatedItem = await Memory.updateOne(
+					{
+						_id: found.id,
 					},
-				}
-			);
-			res.status(200).json({
-				message: "item updated",
-			});
+					{
+						$set: {
+							title: req.body.title ? req.body.title : found.title,
+							body: req.body.body ? req.body.body : found.body,
+						},
+					}
+				);
+				return res.status(200).json({
+					msg: "item updated",
+				});
+			} else {
+				return res.status(401).json({
+					msg: "can't update other users memories",
+				});
+			}
 		} else {
-			res.status(400).json({
-				message: "Item not found",
+			return res.status(400).json({
+				msg: "Item not found",
 			});
 		}
 	} catch (err) {
-		res.status(400).json({
-			message: "Id not valid",
+		return res.status(400).json({
+			msg: "Id not valid",
 		});
 	}
 });
 
 // delete memory
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
 	try {
 		const found = await Memory.findById(req.params.id);
 		if (found) {
-			await Memory.deleteOne({
-				_id: found.id,
-			});
-			res.status(200).json({
-				message: "Item deleted",
-			});
+			if (found.userId === req.user.id) {
+				await Memory.deleteOne({
+					_id: found.id,
+				});
+				return res.status(200).json({
+					msg: "Item deleted",
+				});
+			} else {
+				return res.status(401).json({
+					msg: "can't delete other users memories",
+				});
+			}
 		} else {
-			res.status(400).json({
-				message: "Item not found",
+			return res.status(400).json({
+				msg: "Item not found",
 			});
 		}
 	} catch (err) {
 		res.status(400).json({
-			message: "Id not valid",
+			msg: "Id not valid",
 		});
 	}
 });
@@ -124,7 +139,7 @@ router.post("/search", (req, res) => {
 		})
 		.catch((err) => {
 			res.status(500).json({
-				message: err.message,
+				msg: err.message,
 			});
 		});
 });
