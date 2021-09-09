@@ -25,7 +25,7 @@ router.post("/", auth, (req, res) => {
 	} else {
 		const memory = new Memory({
 			title: req.body.title,
-			body: req.body.title,
+			body: req.body.body,
 			userId: req.user.id,
 		});
 		memory
