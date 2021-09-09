@@ -8,7 +8,7 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
-mongoose.connect(process.env.DATABASE_CONNECT).catch((err) => {
+mongoose.connect(process.env.DATABASE_CONNECT.toString()).catch((err) => {
 	if (err) throw err;
 });
 
